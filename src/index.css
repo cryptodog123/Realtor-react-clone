@@ -1,3 +1,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#eff6f1];
+  }
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+textArea {
+  @apply w-full border my-2 py-2 px-4 border-gray-300 text-gray-700 bg-white outline-none transition ease-in focus:border-gray-700 text-sm;
+}
+
+@layer components {
+  .icon {
+    @apply h-6 w-6 absolute cursor-pointer top-[50%] right-2 translate-y-[-50%] text-gray-400;
+  }
+}
