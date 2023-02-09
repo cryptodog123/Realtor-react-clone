@@ -1,8 +1,24 @@
 import React from "react";
 import { useLocation } from "react-router";
 import { Link } from "react-router-dom";
+import { getAuth } from "firebase/auth";
+import { useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+
 const Header = () => {
   const location = useLocation();
+  const [userState, setUserState] = useState("Sign In");
+  const auth = getAuth();
+
+  useEffect(() => {
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserState("Profile");
+      } else {
+        setUserState("Sign In");
+      }
+    });
+  }, [auth]);
 
   const checkPathName = (route) => {
     let defaultNames =
@@ -32,8 +48,13 @@ const Header = () => {
             <Link to={"/offers"} className={`${checkPathName("/offers")}`}>
               Offers
             </Link>
-            <Link to={"/sign-in"} className={`${checkPathName("/sign-in")}`}>
-              Sign In
+            <Link
+              to={`${userState === "Profile" ? "/profile" : "/sign-in"}`}
+              className={`${checkPathName(
+                `${userState === "Profile" ? "/profile" : "/sign-in"}`
+              )}`}
+            >
+              {userState}
             </Link>
           </ul>
         </div>
