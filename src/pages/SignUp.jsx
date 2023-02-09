@@ -57,12 +57,14 @@ const SignUp = () => {
               placeholder={"Full name"}
               type={"text"}
               callback={setFullName}
+
             />
             <Input
               defaultValue={email}
               placeholder={"Email@example.com"}
               type={"email"}
               callback={setEmail}
+      
             />
             <PasswordInput
               showPassword={showPassword}

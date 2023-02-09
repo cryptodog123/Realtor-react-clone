@@ -7,7 +7,7 @@ const Input = ({ defaultValue, placeholder, type, callback }) => {
       placeholder={placeholder}
       defaultValue={defaultValue}
       onChange={(e) => callback(e.target.value)}
-      className="input"
+      className="input  my-2"
     />
   );
 };

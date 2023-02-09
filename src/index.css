@@ -13,11 +13,20 @@ input[type="password"],
 input[type="email"],
 input[type="number"],
 textArea {
-  @apply w-full border my-2 py-2 px-4 border-gray-300 text-gray-700  outline-none transition ease-in focus:border-gray-700 text-sm;
+  @apply w-full border py-2 px-4 border-gray-300 text-gray-700  outline-none transition ease-in focus:border-gray-700 text-sm;
 }
 
 @layer components {
   .icon {
     @apply h-6 w-6 absolute cursor-pointer top-[50%] right-2 translate-y-[-50%] text-gray-400;
+  }
+  .simple-button {
+    @apply w-full p-3 border border-gray-500 text-black hover:shadow-lg transition ease-in font-semibold shadow-md;
+  }
+  .simple-button-active {
+    @apply bg-gray-700 text-white shadow-md;
+  }
+  .form-subtitle {
+    @apply text-[13px] uppercase font-semibold;
   }
 }

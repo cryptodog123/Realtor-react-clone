@@ -31,6 +31,7 @@ const ForgotPassword = () => {
               placeholder={"Email@example.com"}
               type={"email"}
               callback={setEmail}
+              className=" my-2"
             />
             <SmallText
               text={"Don't have an account yet?"}

@@ -14,7 +14,7 @@ const PasswordInput = ({
         placeholder="Passsword"
         defaultValue={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="input"
+        className="input  my-2"
       />
       {showPassword ? (
         <EyeIcon
