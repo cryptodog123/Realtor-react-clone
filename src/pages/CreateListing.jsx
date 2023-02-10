@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useState } from "react";
 import Spinner from "../components/Spinner";
 import { toast } from "react-toastify";
@@ -10,33 +10,106 @@ import {
 } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 import { v4 as uuidv4 } from "uuid";
-import { serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { addDoc, collection } from "firebase/firestore";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 const CreateListing = () => {
   const [loading, setLoading] = useState();
   const navigate = useNavigate();
   const auth = getAuth();
-  const [revealCoords, setRevealCoords] = useState(false);
-  const [latitude, setLatitude] = useState(0);
-  const [longitude, setLongitude] = useState(0);
-  const [type, setType] = useState("rent");
-  const [name, setName] = useState("");
-  const [beds, setBeds] = useState(0);
-  const [bathrooms, setBathrooms] = useState(0);
-  const [parking, setParking] = useState(false);
-  const [furnished, setFurnished] = useState(false);
-  const [location, setLocation] = useState("");
-  const [description, setDescription] = useState("");
-  const [offer, setOffer] = useState(false);
-  const [price, setPrice] = useState(0);
-  const [discountedPrice, setDiscountedPrice] = useState(0);
-  const [addedPhotos, setAddedPhotos] = useState([]);
+  const [listing, setListing] = useState(false);
+  const [formData, setFormData] = useState({
+    type: "rent",
+    name: "",
+    beds: 0,
+    bathrooms: 0,
+    parking: false,
+    furnished: false,
+    location: "",
+    description: "",
+    offer: false,
+    price: 0,
+    discountedPrice: 0,
+    addedPhotos: [],
+    updated: false,
+    updatedTimestamp: "",
+  });
+
+  const {
+    type,
+    name,
+    beds,
+    bathrooms,
+    parking,
+    furnished,
+    location,
+    description,
+    offer,
+    price,
+    discountedPrice,
+    addedPhotos,
+    updated,
+    updatedTimestamp,
+  } = formData;
+
+  const { id } = useParams();
+  useEffect(() => {
+    const fetchListingDataForEdit = async () => {
+      setLoading(true);
+
+      const docRef = doc(db, "listings", id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setListing(true);
+
+        const formDataCopy = { ...docSnap.data() };
+        // delete formDataCopy.userRef;
+        delete formDataCopy.coords;
+        delete formDataCopy.timestamp;
+
+        formDataCopy.addedPhotos = formDataCopy.imgUrls;
+        delete formDataCopy.imgUrls;
+
+        setFormData(formDataCopy);
+        setListing(true);
+        console.log(formDataCopy.userRef, auth.currentUser.uid);
+        if (formDataCopy.userRef !== auth.currentUser.uid) {
+          toast.error("You are not authorized to acces this page.");
+          navigate("/");
+        }
+      } else {
+        navigate("/");
+        toast.error("Listing does not exist.");
+      }
+
+      setLoading(false);
+    };
+    if (id) fetchListingDataForEdit();
+  }, []);
+
+  const updateListing = async () => {
+    try {
+      const docToUpdatRef = doc(db, "listings", id);
+      formData.updated = true;
+      formData.updatedTimestamp = serverTimestamp();
+      await updateDoc(docToUpdatRef, formData);
+
+      navigate("/");
+      toast.success("Updated listing successfully.");
+    } catch (err) {
+      toast.error("An error has occured, try again later...");
+    }
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (listing) {
+      updateListing();
+      return;
+    }
+    console.log("Creating");
     setLoading(true);
     if (offer && +discountedPrice > +price) {
       setLoading(false);
@@ -81,26 +154,18 @@ const CreateListing = () => {
       return;
     });
     console.log(imgUrls);
-    const formDataObject = {
-      name,
-      beds,
-      type,
-      bathrooms,
-      parking,
-      furnished,
-      location,
-      description,
-      price,
-      offer,
-      discountedPrice,
-      imgUrls,
-      coords: { latitude, longitude },
+
+    const formDataCopy = {
+      ...formData,
       timestamp: serverTimestamp(),
       userRef: auth.currentUser.uid,
+      imgUrls,
     };
-    !formDataObject.offer && delete formDataObject.discountedPrice;
+    delete formDataCopy.addedPhotos;
 
-    const docRef = await addDoc(collection(db, "listings"), formDataObject);
+    !formDataCopy.offer && delete formDataCopy.discountedPrice;
+    console.log(formDataCopy);
+    const docRef = await addDoc(collection(db, "listings"), formDataCopy);
     setLoading(false);
     toast.success("Listing created.");
     navigate(`/listings/${type}/${docRef.id}`);
@@ -111,7 +176,7 @@ const CreateListing = () => {
   return (
     <main className="w-full md:w-[50%] xl:w-[42%] px-10 md:px-0 mx-auto">
       <h2 className="text-center bond-semibold text-2xl mt-4">
-        Create Listing
+        {listing ? "Editing " : "Create "}listing
       </h2>
       <form className="mt-4" onSubmit={onSubmit}>
         <p className="form-subtitle ">sell/rent</p>
@@ -121,7 +186,7 @@ const CreateListing = () => {
             className={`simple-button ${
               type === "sell" && "simple-button-active"
             }`}
-            onClick={() => setType("sell")}
+            onClick={() => setFormData({ ...formData, type: "sell" })}
           >
             Sell
           </button>
@@ -130,7 +195,7 @@ const CreateListing = () => {
             className={`simple-button ${
               type === "rent" && "simple-button-active"
             }`}
-            onClick={() => setType("rent")}
+            onClick={() => setFormData({ ...formData, type: "rent" })}
           >
             Rent
           </button>
@@ -140,10 +205,10 @@ const CreateListing = () => {
           type="text"
           defaultValue={name}
           required
-          maxLength={32}
+          maxLength={56}
           placeholder="e.g: Modern-looking bamboo house, Bali"
           minLength={5}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           className="mt-0 mb-3"
         />
         <div className="flex justify-between text-center mb-4">
@@ -152,7 +217,9 @@ const CreateListing = () => {
             <input
               type="number"
               defaultValue={beds}
-              onChange={(e) => setBeds(e.target.value)}
+              onChange={(e) =>
+                setFormData({ ...formData, beds: e.target.value })
+              }
               min={0}
             />
           </div>
@@ -161,7 +228,9 @@ const CreateListing = () => {
             <input
               type="number"
               defaultValue={bathrooms}
-              onChange={(e) => setBathrooms(e.target.value)}
+              onChange={(e) =>
+                setFormData({ ...formData, bathrooms: e.target.value })
+              }
               min={0}
             />
           </div>
@@ -171,7 +240,7 @@ const CreateListing = () => {
           <button
             type="button"
             className={`simple-button ${parking && "simple-button-active"}`}
-            onClick={() => setParking(true)}
+            onClick={() => setFormData({ ...formData, parking: true })}
           >
             Available
           </button>
@@ -179,7 +248,7 @@ const CreateListing = () => {
           <button
             type="button"
             className={`simple-button ${!parking && "simple-button-active"}`}
-            onClick={() => setParking(false)}
+            onClick={() => setFormData({ ...formData, parking: false })}
           >
             Unavailable
           </button>
@@ -189,14 +258,14 @@ const CreateListing = () => {
           <button
             type="button"
             className={`simple-button ${furnished && "simple-button-active"}`}
-            onClick={() => setFurnished(true)}
+            onClick={() => setFormData({ ...formData, furnished: true })}
           >
             Furnished
           </button>
           <button
             type="button"
             className={`simple-button ${!furnished && "simple-button-active"}`}
-            onClick={() => setFurnished(false)}
+            onClick={() => setFormData({ ...formData, furnished: false })}
           >
             Unfirnished
           </button>
@@ -206,59 +275,33 @@ const CreateListing = () => {
           type="text"
           placeholder="e.g: Bali, Indonesia"
           defaultValue={location}
-          onChange={(e) => setLocation(e.target.value)}
+          onChange={(e) =>
+            setFormData({ ...formData, location: e.target.value })
+          }
         />
-        <p
-          className="text-sm text-gray-600 hover:underline cursor-pointer"
-          onClick={() => setRevealCoords(!revealCoords)}
-        >
-          Know the exact coordinates? Click here
-        </p>
-        {revealCoords && (
-          <div className="flex justify-between text-center mb-4">
-            <div>
-              <p>Latitude</p>
-              <input
-                type="text"
-                defaultValue={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
-                min={-90}
-                max={90}
-              />
-            </div>
-            <div>
-              <p>Longitude</p>
-              <input
-                type="text"
-                defaultValue={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
-                min={-180}
-                max={180}
-              />
-            </div>
-          </div>
-        )}
 
         <p className="form-subtitle mt-4">Description</p>
         <textarea
           type="text"
           defaultValue={description}
           placeholder="Peaceful environmment with beautiful daily sunrise and sunsets"
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) =>
+            setFormData({ ...formData, description: e.target.value })
+          }
         />
         <p className="form-subtitle mt-4">Offer</p>
         <div className="flex gap-4 mb-3">
           <button
             type="button"
             className={`simple-button ${offer && "simple-button-active"}`}
-            onClick={() => setOffer(true)}
+            onClick={() => setFormData({ ...formData, offer: true })}
           >
             Yes
           </button>
           <button
             type="button"
             className={`simple-button ${!offer && "simple-button-active"}`}
-            onClick={() => setOffer(false)}
+            onClick={() => setFormData({ ...formData, offer: false })}
           >
             No
           </button>
@@ -274,7 +317,7 @@ const CreateListing = () => {
                 onChange={(e) => {
                   typeof (e.target.value * 1) === "number" &&
                     !isNaN(e.target.value * 1) &&
-                    setPrice(e.target.value);
+                    setFormData({ ...formData, price: e.target.value });
                 }}
                 min={0}
               />
@@ -290,11 +333,14 @@ const CreateListing = () => {
                 <input
                   required={offer && true}
                   type="text"
-                  value={discountedPrice}
+                  defaultValue={discountedPrice}
                   onChange={(e) => {
                     typeof (e.target.value * 1) === "number" &&
                       !isNaN(e.target.value * 1) &&
-                      setDiscountedPrice(e.target.value);
+                      setFormData({
+                        ...formData,
+                        discountedPrice: e.target.value,
+                      });
                   }}
                   min={0}
                 />
@@ -326,19 +372,21 @@ const CreateListing = () => {
             <input
               type="file"
               className="hidden"
-              //   accept="image/jpg, image/png, image/jpeg, "
               onChange={(e) => {
-                setAddedPhotos([...addedPhotos, e.target.files[0]]);
+                setFormData({
+                  ...formData,
+                  addedPhotos: [...addedPhotos, e.target.files[0]],
+                });
               }}
             />
           </div>
-          <span className="">Images: {addedPhotos.length}</span>
+          <span>Images: {addedPhotos.length}</span>
         </label>
         <button
           className="uppercase text-sm bg-blue-500 hover:bg-blue-600 transition ease-in text-center text-white py-3 w-full mb-10 shadow-md hover:shadow-lg "
           type="submit"
         >
-          Create Listing
+          {listing ? "Save changes..." : "Create Listing"}
         </button>
       </form>
     </main>

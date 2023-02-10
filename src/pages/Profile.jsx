@@ -8,14 +8,13 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
   getDocs,
   orderBy,
   query,
   updateDoc,
   where,
 } from "firebase/firestore";
-import { getStorage, ref } from "firebase/storage";
+
 import { db } from "../firebase";
 import { Link } from "react-router-dom";
 import ListItem from "../components/ListItem";
@@ -33,19 +32,18 @@ const Profile = () => {
     const fetchUserListings = async () => {
       const listingRef = collection(db, "listings");
 
-      console.log(listingRef);
       const q = query(
         listingRef,
         where("userRef", "==", auth.currentUser.uid),
         orderBy("timestamp", "desc")
       );
-      console.log(q);
+
       const querySnap = await getDocs(q);
-      console.log(querySnap);
+
       const listings = querySnap.docs.map((doc) => {
         return { id: doc.id, data: doc.data() };
       });
-      console.log(listings);
+
       setListings(listings);
       setLoading(false);
     };
@@ -54,6 +52,7 @@ const Profile = () => {
 
   const onEdit = (listingId) => {
     navigate(`/edit-listing/${listingId}`);
+    console.log(listingId);
   };
 
   const onDelete = async (listing) => {

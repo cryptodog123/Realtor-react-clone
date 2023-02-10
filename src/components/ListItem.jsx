@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Moment from "react-moment";
 import { Link } from "react-router-dom";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { FaTrash } from "react-icons/fa";
-import { MdMode, MdModeEdit } from "react-icons/md";
+import { MdModeEdit } from "react-icons/md";
 
 const ListItem = ({ listing, id, onEdit, onDelete }) => {
   return (
@@ -16,12 +16,20 @@ const ListItem = ({ listing, id, onEdit, onDelete }) => {
           className="h-[200px] w-full object-cover mb-2 hover:scale-[102%] transition ease-in duration-100"
         />
         <div className="ml-[10px] flex flex-col gap-1">
-          <Moment
-            className="bg-blue-500 uppecase px-1 rounded-lg top-2 left-2 absolute text-white uppercase text-sm"
-            fromNow
+          <div
+            className={` ${
+              Date.now() / 1000 < listing.updatedTimestamp?.seconds + 3600
+                ? "bg-red-500"
+                : "bg-blue-500"
+            } uppecase px-1 rounded-lg top-2 left-2 absolute text-white uppercase text-sm `}
           >
-            {listing.timestamp?.toDate()}
-          </Moment>
+            {listing.updated && "updated "}
+            <Moment fromNow>
+              {listing.updated
+                ? listing.updatedTimestamp?.toDate()
+                : listing.timestamp?.toDate()}
+            </Moment>
+          </div>
           <div className="flex items-center gap-1">
             <FaMapMarkerAlt className="text-green-500" />
             <p className="text-gray-500 text-sm font-semibold">
@@ -55,7 +63,7 @@ const ListItem = ({ listing, id, onEdit, onDelete }) => {
       />
       <MdModeEdit
         className="absolute right-10 bottom-4 text-gray-400 hover:text-gray-500 transition ease-in cursor-pointer h-4 w-4"
-        onClick={() => onEdit(listing)}
+        onClick={() => onEdit(id)}
       />
     </li>
   );
