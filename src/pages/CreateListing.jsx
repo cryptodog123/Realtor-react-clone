@@ -28,7 +28,7 @@ const CreateListing = () => {
   const [bathrooms, setBathrooms] = useState(0);
   const [parking, setParking] = useState(false);
   const [furnished, setFurnished] = useState(false);
-  const [address, setAddress] = useState("");
+  const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [offer, setOffer] = useState(false);
   const [price, setPrice] = useState(0);
@@ -38,7 +38,7 @@ const CreateListing = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    if (offer && discountedPrice > price) {
+    if (offer && +discountedPrice > +price) {
       setLoading(false);
       toast.error("Discounted price should be lesss than regular price.");
       return;
@@ -57,26 +57,13 @@ const CreateListing = () => {
         const uploadTask = uploadBytesResumable(storageRef, image);
         uploadTask.on(
           "state_changed",
-          (snapshot) => {
-            const progress =
-              (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log("Upload is " + progress + "% done");
-            switch (snapshot.state) {
-              case "paused":
-                console.log("Upload is paused");
-                break;
-              case "running":
-                console.log("Upload is running");
-                break;
-            }
+          () => {
+            console.log("Upload in progress");
           },
           (error) => {
-            console.log(error);
             reject(error);
           },
           () => {
-            // Handle successful uploads on complete
-            // For instance, get the download URL: https://firebasestorage.googleapis.com/...
             getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
               resolve(downloadURL);
             });
@@ -100,7 +87,7 @@ const CreateListing = () => {
       bathrooms,
       parking,
       furnished,
-      address,
+      location,
       description,
       price,
       offer,
@@ -108,6 +95,7 @@ const CreateListing = () => {
       imgUrls,
       coords: { latitude, longitude },
       timestamp: serverTimestamp(),
+      userRef: auth.currentUser.uid,
     };
     !formDataObject.offer && delete formDataObject.discountedPrice;
 
@@ -152,6 +140,7 @@ const CreateListing = () => {
           defaultValue={name}
           required
           maxLength={32}
+          placeholder="e.g: Modern-looking bamboo house, Bali"
           minLength={5}
           onChange={(e) => setName(e.target.value)}
           className="mt-0 mb-3"
@@ -211,11 +200,12 @@ const CreateListing = () => {
             Unfirnished
           </button>
         </div>
-        <p className="form-subtitle mt-4">Address</p>
+        <p className="form-subtitle mt-4">Location</p>
         <input
           type="text"
-          defaultValue={address}
-          onChange={(e) => setAddress(e.target.value)}
+          placeholder="e.g: Bali, Indonesia"
+          defaultValue={location}
+          onChange={(e) => setLocation(e.target.value)}
         />
         <p
           className="text-sm text-gray-600 hover:underline cursor-pointer"
@@ -252,6 +242,7 @@ const CreateListing = () => {
         <textarea
           type="text"
           defaultValue={description}
+          placeholder="Peaceful environmment with beautiful daily sunrise and sunsets"
           onChange={(e) => setDescription(e.target.value)}
         />
         <p className="form-subtitle mt-4">Offer</p>

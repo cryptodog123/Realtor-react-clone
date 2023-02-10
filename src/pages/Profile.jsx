@@ -1,20 +1,53 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useState } from "react";
 import { getAuth } from "firebase/auth";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { updateProfile } from "firebase/auth";
-import { doc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { db } from "../firebase";
 import { Link } from "react-router-dom";
-import { HomeModernIcon } from "@heroicons/react/outline";
+import ListItem from "../components/ListItem";
 
 const Profile = () => {
   const auth = getAuth();
   const navigate = useNavigate();
   const [changeDetail, setChangeDetail] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState(auth.currentUser.displayName);
   const [email, setEmail] = useState(auth.currentUser.email);
+  const [listings, setListings] = useState(null);
+
+  useEffect(() => {
+    const fetchUserListings = async () => {
+      const listingRef = collection(db, "listings");
+      console.log(listingRef);
+      const q = query(
+        listingRef,
+        where("userRef", "==", auth.currentUser.uid),
+        orderBy("timestamp", "desc")
+      );
+      console.log(q);
+      const querySnap = await getDocs(q);
+      console.log(querySnap);
+      const listings = querySnap.docs.map((doc) => {
+        return { id: doc.id, data: doc.data() };
+      });
+      console.log(listings);
+      setListings(listings);
+      setLoading(false);
+    };
+    fetchUserListings();
+  }, []);
 
   const onLogout = () => {
     auth.signOut();
@@ -112,6 +145,16 @@ const Profile = () => {
           </button>
         </div>
       </section>
+      {!loading && listings?.length > 0 && (
+        <div>
+          <h1 className="mt-8 text-2xl mb-4 text-center">My Listings</h1>
+          <ul>
+            {listings.map((list, i) => (
+              <ListItem key={i} listing={list} />
+            ))}
+          </ul>
+        </div>
+      )}
     </>
   );
 };
