@@ -1,11 +1,31 @@
 import React from "react";
 import { useState } from "react";
+import Spinner from "../components/Spinner";
+import { toast } from "react-toastify";
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+} from "firebase/storage";
+import { getAuth } from "firebase/auth";
+import { v4 as uuidv4 } from "uuid";
+import { serverTimestamp } from "firebase/firestore";
+import { db } from "../firebase";
+import { addDoc, collection } from "firebase/firestore";
+import { useNavigate } from "react-router";
 
 const CreateListing = () => {
+  const [loading, setLoading] = useState();
+  const navigate = useNavigate();
+  const auth = getAuth();
+  const [revealCoords, setRevealCoords] = useState(false);
+  const [latitude, setLatitude] = useState(0);
+  const [longitude, setLongitude] = useState(0);
   const [type, setType] = useState("rent");
   const [name, setName] = useState("");
-  const [beds, setBeds] = useState();
-  const [bathrooms, setBathrooms] = useState();
+  const [beds, setBeds] = useState(0);
+  const [bathrooms, setBathrooms] = useState(0);
   const [parking, setParking] = useState(false);
   const [furnished, setFurnished] = useState(false);
   const [address, setAddress] = useState("");
@@ -15,12 +35,96 @@ const CreateListing = () => {
   const [discountedPrice, setDiscountedPrice] = useState(0);
   const [addedPhotos, setAddedPhotos] = useState([]);
 
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    if (offer && discountedPrice > price) {
+      setLoading(false);
+      toast.error("Discounted price should be lesss than regular price.");
+      return;
+    }
+    if (addedPhotos.length > 6) {
+      setLoading(false);
+      toast.error("Cannot upload more than 6 images.");
+      return;
+    }
+
+    const storeImage = (image) => {
+      return new Promise((resolve, reject) => {
+        const storage = getStorage();
+        const filename = `${auth.currentUser.uid}-${image.name}-${uuidv4()}`;
+        const storageRef = ref(storage, filename);
+        const uploadTask = uploadBytesResumable(storageRef, image);
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress =
+              (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log("Upload is " + progress + "% done");
+            switch (snapshot.state) {
+              case "paused":
+                console.log("Upload is paused");
+                break;
+              case "running":
+                console.log("Upload is running");
+                break;
+            }
+          },
+          (error) => {
+            console.log(error);
+            reject(error);
+          },
+          () => {
+            // Handle successful uploads on complete
+            // For instance, get the download URL: https://firebasestorage.googleapis.com/...
+            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+              resolve(downloadURL);
+            });
+          }
+        );
+      });
+    };
+
+    const imgUrls = await Promise.all(
+      [...addedPhotos].map(async (img) => await storeImage(img))
+    ).catch((err) => {
+      setLoading(false);
+      console.log(err);
+      toast.error("Images not uploaded");
+      return;
+    });
+    console.log(imgUrls);
+    const formDataObject = {
+      name,
+      beds,
+      bathrooms,
+      parking,
+      furnished,
+      address,
+      description,
+      price,
+      offer,
+      discountedPrice,
+      imgUrls,
+      coords: { latitude, longitude },
+      timestamp: serverTimestamp(),
+    };
+    !formDataObject.offer && delete formDataObject.discountedPrice;
+
+    const docRef = await addDoc(collection(db, "listings"), formDataObject);
+    setLoading(false);
+    toast.success("Listing created.");
+    navigate(`/listings/${type}/${docRef.id}`);
+  };
+
+  if (loading) return <Spinner />;
+
   return (
     <main className="w-full md:w-[50%] xl:w-[42%] px-10 md:px-0 mx-auto">
       <h2 className="text-center bond-semibold text-2xl mt-4">
         Create Listing
       </h2>
-      <form className="mt-4">
+      <form className="mt-4" onSubmit={onSubmit}>
         <p className="form-subtitle ">sell/rent</p>
         <div className="flex gap-4 mb-3">
           <button
@@ -50,7 +154,7 @@ const CreateListing = () => {
           maxLength={32}
           minLength={5}
           onChange={(e) => setName(e.target.value)}
-          className="mt-0"
+          className="mt-0 mb-3"
         />
         <div className="flex justify-between text-center mb-4">
           <div>
@@ -113,6 +217,37 @@ const CreateListing = () => {
           defaultValue={address}
           onChange={(e) => setAddress(e.target.value)}
         />
+        <p
+          className="text-sm text-gray-600 hover:underline cursor-pointer"
+          onClick={() => setRevealCoords(!revealCoords)}
+        >
+          Know the exact coordinates? Click here
+        </p>
+        {revealCoords && (
+          <div className="flex justify-between text-center mb-4">
+            <div>
+              <p>Latitude</p>
+              <input
+                type="text"
+                defaultValue={latitude}
+                onChange={(e) => setLatitude(e.target.value)}
+                min={-90}
+                max={90}
+              />
+            </div>
+            <div>
+              <p>Longitude</p>
+              <input
+                type="text"
+                defaultValue={longitude}
+                onChange={(e) => setLongitude(e.target.value)}
+                min={-180}
+                max={180}
+              />
+            </div>
+          </div>
+        )}
+
         <p className="form-subtitle mt-4">Description</p>
         <textarea
           type="text"
@@ -199,8 +334,9 @@ const CreateListing = () => {
             <input
               type="file"
               className="hidden"
+              //   accept="image/jpg, image/png, image/jpeg, "
               onChange={(e) => {
-                setAddedPhotos([...addedPhotos, e.target.value]);
+                setAddedPhotos([...addedPhotos, e.target.files[0]]);
               }}
             />
           </div>
