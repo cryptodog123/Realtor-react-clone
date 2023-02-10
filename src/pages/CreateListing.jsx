@@ -84,6 +84,7 @@ const CreateListing = () => {
     const formDataObject = {
       name,
       beds,
+      type,
       bathrooms,
       parking,
       furnished,
