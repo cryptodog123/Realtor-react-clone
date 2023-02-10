@@ -2,10 +2,12 @@ import React from "react";
 import Moment from "react-moment";
 import { Link } from "react-router-dom";
 import { FaMapMarkerAlt } from "react-icons/fa";
+import { FaTrash } from "react-icons/fa";
+import { MdMode, MdModeEdit } from "react-icons/md";
 
-const ListItem = ({ listing, id }) => {
+const ListItem = ({ listing, id, onEdit, onDelete }) => {
   return (
-    <li className="bg-white  pb-5 rounded-xl w-[275px] mx-auto overflow-hidden relative m-[10px] ">
+    <li className="bg-white shadow-md hover:shadow-lg transition ease-in pb-5 rounded-xl w-[275px] mx-auto overflow-hidden relative m-[10px] ">
       <Link className="contents" to={`/category/${listing.type}/${id}`}>
         <img
           src={listing.imgUrls[0]}
@@ -47,6 +49,14 @@ const ListItem = ({ listing, id }) => {
           </div>
         </div>
       </Link>
+      <FaTrash
+        className="absolute right-4 bottom-4 text-red-400 hover:text-red-500 transition ease-in cursor-pointer h-4 w-4"
+        onClick={() => onDelete(listing)}
+      />
+      <MdModeEdit
+        className="absolute right-10 bottom-4 text-gray-400 hover:text-gray-500 transition ease-in cursor-pointer h-4 w-4"
+        onClick={() => onEdit(listing)}
+      />
     </li>
   );
 };

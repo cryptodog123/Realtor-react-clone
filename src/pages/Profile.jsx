@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import { updateProfile } from "firebase/auth";
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -14,6 +15,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import { getStorage, ref } from "firebase/storage";
 import { db } from "../firebase";
 import { Link } from "react-router-dom";
 import ListItem from "../components/ListItem";
@@ -30,6 +32,7 @@ const Profile = () => {
   useEffect(() => {
     const fetchUserListings = async () => {
       const listingRef = collection(db, "listings");
+
       console.log(listingRef);
       const q = query(
         listingRef,
@@ -48,6 +51,24 @@ const Profile = () => {
     };
     fetchUserListings();
   }, []);
+
+  const onEdit = (listingId) => {
+    navigate(`/edit-listing/${listingId}`);
+  };
+
+  const onDelete = async (listing) => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this listing? This action cannot be undone."
+      )
+    ) {
+      await deleteDoc(doc(db, "listings", listing.id));
+      const updatedListings = listings.filter((list) => list.id !== listing.id);
+
+      setListings(updatedListings);
+      toast.success("Listing removed successfully.");
+    }
+  };
 
   const onLogout = () => {
     auth.signOut();
@@ -150,7 +171,13 @@ const Profile = () => {
           <h1 className="mt-8 text-2xl mb-4 text-center">My Listings</h1>
           <ul className="grid w-[300px] mx-auto grid-cols-1 md:grid-cols-2 md:w-[600px] lg:grid-cols-3 lg:w-[900px] xl:grid-cols-4 xl:w-[1250px]">
             {listings.map((list, i) => (
-              <ListItem key={i} listing={list.data} id={list.id} />
+              <ListItem
+                key={i}
+                listing={list.data}
+                id={list.id}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
             ))}
           </ul>
         </div>
