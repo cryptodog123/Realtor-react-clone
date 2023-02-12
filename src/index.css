@@ -30,3 +30,8 @@ textArea {
     @apply text-[13px] uppercase font-semibold;
   }
 }
+
+.swiper-button-prev:after,
+.swiper-button-next:after {
+  color: #3453d3;
+}

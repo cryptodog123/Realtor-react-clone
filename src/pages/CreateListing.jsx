@@ -20,6 +20,7 @@ const CreateListing = () => {
   const navigate = useNavigate();
   const auth = getAuth();
   const [listing, setListing] = useState(false);
+  const [newFiles, setNewFiles] = useState([]);
   const [formData, setFormData] = useState({
     type: "rent",
     name: "",
@@ -74,7 +75,7 @@ const CreateListing = () => {
 
         setFormData(formDataCopy);
         setListing(true);
-        console.log(formDataCopy.userRef, auth.currentUser.uid);
+
         if (formDataCopy.userRef !== auth.currentUser.uid) {
           toast.error("You are not authorized to acces this page.");
           navigate("/");
@@ -89,16 +90,59 @@ const CreateListing = () => {
     if (id) fetchListingDataForEdit();
   }, []);
 
+  const storeImage = (image) => {
+    return new Promise((resolve, reject) => {
+      const storage = getStorage();
+
+      const filename = `${auth.currentUser.uid}-${image.name}-${uuidv4()}`;
+      const storageRef = ref(storage, filename);
+      const uploadTask = uploadBytesResumable(storageRef, image);
+      uploadTask.on(
+        "state_changed",
+        () => {
+          console.log("Upload in progress");
+        },
+        (error) => {
+          reject(error);
+          console.log(auth.currentUser);
+          console.log(error);
+        },
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            resolve(downloadURL);
+          });
+        }
+      );
+    });
+  };
+
   const updateListing = async () => {
     try {
       const docToUpdatRef = doc(db, "listings", id);
       formData.updated = true;
       formData.updatedTimestamp = serverTimestamp();
-      await updateDoc(docToUpdatRef, formData);
+
+      const newPhotoLinks = newFiles.map(async (file) => {
+        const link = await storeImage(file);
+        return link;
+      });
+
+      const photoLinks = await Promise.all(newPhotoLinks);
+
+      const finalData = {
+        ...formData,
+        imgUrls: [...addedPhotos, ...photoLinks],
+      };
+
+      setFormData(finalData);
+      delete finalData.addedPhotos;
+      console.log(finalData);
+      await updateDoc(docToUpdatRef, finalData);
 
       navigate("/");
       toast.success("Updated listing successfully.");
     } catch (err) {
+      console.log(err);
       toast.error("An error has occured, try again later...");
     }
   };
@@ -121,29 +165,6 @@ const CreateListing = () => {
       toast.error("Cannot upload more than 6 images.");
       return;
     }
-
-    const storeImage = (image) => {
-      return new Promise((resolve, reject) => {
-        const storage = getStorage();
-        const filename = `${auth.currentUser.uid}-${image.name}-${uuidv4()}`;
-        const storageRef = ref(storage, filename);
-        const uploadTask = uploadBytesResumable(storageRef, image);
-        uploadTask.on(
-          "state_changed",
-          () => {
-            console.log("Upload in progress");
-          },
-          (error) => {
-            reject(error);
-          },
-          () => {
-            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-              resolve(downloadURL);
-            });
-          }
-        );
-      });
-    };
 
     const imgUrls = await Promise.all(
       [...addedPhotos].map(async (img) => await storeImage(img))
@@ -373,14 +394,18 @@ const CreateListing = () => {
               type="file"
               className="hidden"
               onChange={(e) => {
-                setFormData({
-                  ...formData,
-                  addedPhotos: [...addedPhotos, e.target.files[0]],
-                });
+                if (listing) {
+                  setNewFiles([...newFiles, e.target.files[0]]);
+                } else {
+                  setFormData({
+                    ...formData,
+                    addedPhotos: [...addedPhotos, e.target.files[0]],
+                  });
+                }
               }}
             />
           </div>
-          <span>Images: {addedPhotos.length}</span>
+          <span>Images: {addedPhotos?.length + newFiles?.length}</span>
         </label>
         <button
           className="uppercase text-sm bg-blue-500 hover:bg-blue-600 transition ease-in text-center text-white py-3 w-full mb-10 shadow-md hover:shadow-lg "

@@ -37,7 +37,7 @@ const SignIn = () => {
     <section>
       <div className=" relative flex justify-center flex-wrap items-center px-6 py-12 max-w-6xl mx-auto pt-[125px]">
         <HeaderLeft title={"Sign In"} />
-        <div className="sm:w-full md:w-[67%] lg:w-[40%] lg:ml-20">
+        <div className="sm:w-full md:w-[67%] mx-auto lg:w-[40%] lg:ml-20">
           <form onSubmit={onSubmit}>
             <Input
               defaultValue={email}
