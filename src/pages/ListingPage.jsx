@@ -12,10 +12,12 @@ import SwiperCore, {
 import "swiper/css/bundle";
 import "swiper/css/pagination";
 import Spinner from "../components/Spinner";
+import { FaShare } from "react-icons/fa";
 
 const ListingPage = () => {
   const { listingId, category } = useParams();
   const [listing, setListing] = useState(null);
+  const [showCopiedText, setShowCopiedText] = useState();
   const [loading, setLoading] = useState(true);
   SwiperCore.use(Autoplay, Navigation, Pagination);
 
@@ -66,6 +68,23 @@ const ListingPage = () => {
           );
         })}
       </Swiper>
+      <div
+        className="p-2 bg-gray-200 border-2 border-gray-500 rounded-full absolute top-[10%] right-[5%] cursor-pointer z-50 opacity-50 hover:opacity-80 transition ease-in"
+        onClick={() => {
+          navigator.clipboard.writeText(window.location.href);
+          setShowCopiedText(true);
+          setTimeout(() => {
+            setShowCopiedText(false);
+          }, 1000);
+        }}
+      >
+        <FaShare className="text-gray-600" />
+      </div>
+      {showCopiedText && (
+        <p className="absolute top-[15%] right-[10%] bg-white p-2 opacity-80 z-50 rounded-sm ">
+          Link copied!
+        </p>
+      )}
     </main>
   );
 };
