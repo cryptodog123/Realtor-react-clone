@@ -15,9 +15,13 @@ import Spinner from "../components/Spinner";
 import { FaShare } from "react-icons/fa";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { FaBed, FaChair, FaBath, FaParking } from "react-icons/fa";
+import { getAuth } from "firebase/auth";
+import Contact from "../components/Contact";
 
 const ListingPage = () => {
-  const { listingId, category } = useParams();
+  const { listingId } = useParams();
+  const auth = getAuth();
+  const [showContact, setShowContact] = useState();
   const [listing, setListing] = useState(null);
   const [showCopiedText, setShowCopiedText] = useState();
   const [loading, setLoading] = useState(true);
@@ -81,8 +85,8 @@ const ListingPage = () => {
           Link copied!
         </p>
       )}
-      <div className="max-w-6xl p-4 flex flex-col md:flex-row mx-auto bg-white shadow-lg ">
-        <div className="h-[200px] w-full">
+      <div className="max-w-6xl p-4 flex flex-col md:flex-row mx-auto bg-white shadow-lg gap-5 ">
+        <div className=" w-full">
           <h2 className="text-2xl font-semibold text-blue-500">
             {listing.name}
           </h2>
@@ -90,7 +94,7 @@ const ListingPage = () => {
             <FaMapMarkerAlt className="text-green-500" /> {listing.location}
           </h3>
           <div className="flex gap-2 items-center mt-3">
-            <p
+            <div
               className={`${
                 listing.discountedPrice ? " text-red-400 mr-4" : "text-gray-400"
               } text-2xl relative inline-block`}
@@ -102,7 +106,7 @@ const ListingPage = () => {
               )}
 
               {listing.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-            </p>
+            </div>
             <p className="text-xl text-green-600">
               {listing?.discountedPrice
                 .toString()
@@ -131,8 +135,19 @@ const ListingPage = () => {
               {listing.furnished ? "Furnished" : "Not furnished"}
             </li>
           </ul>
+          {auth.currentUser.uid === listing.userRef && !showContact && (
+            <button
+              onClick={() => setShowContact(true)}
+              className="bg-blue-400 w-full py-2 text-white uppercase text-md hover:bg-blue-500 transition ease-in shadow-md hover:shadow-lg mt-3 "
+            >
+              Contact Landlord
+            </button>
+          )}
+          {showContact && (
+            <Contact userRef={auth.currentUser.uid} listing={listing} />
+          )}
         </div>
-        <div className="bg-purple-400 h-[200px] w-full"></div>
+        <div className="bg-purple-400 h-[250px] w-full"></div>
       </div>
     </main>
   );
