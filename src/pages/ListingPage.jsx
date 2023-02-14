@@ -17,6 +17,8 @@ import { FaMapMarkerAlt } from "react-icons/fa";
 import { FaBed, FaChair, FaBath, FaParking } from "react-icons/fa";
 import { getAuth } from "firebase/auth";
 import Contact from "../components/Contact";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import axios from "axios";
 
 const ListingPage = () => {
   const { listingId } = useParams();
@@ -25,6 +27,7 @@ const ListingPage = () => {
   const [listing, setListing] = useState(null);
   const [showCopiedText, setShowCopiedText] = useState();
   const [loading, setLoading] = useState(true);
+  const [coordinates, setCoordinates] = useState([]);
   SwiperCore.use(Autoplay, Navigation, Pagination);
 
   useEffect(() => {
@@ -33,13 +36,38 @@ const ListingPage = () => {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         setListing(docSnap.data());
-        setLoading(false);
+        const [city, country] = docSnap.data().location.split(",");
+        console.log(city, country);
+        const { latitude, longitude } = await getCoordinates(city, country);
 
-        console.log(docSnap.data());
+        setCoordinates([latitude, longitude]);
+        setLoading(false);
       }
     };
     fetchData();
   }, [listingId]);
+
+  async function getCoordinates(city, country) {
+    try {
+      const response = await axios.get(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          city
+        )},${encodeURIComponent(country)}&format=json`
+      );
+      const data = response.data;
+
+      if (data.length === 0) {
+        throw new Error(`No matching results found for "${city}, ${country}"`);
+      }
+
+      const { lat, lon } = data[0];
+
+      return { latitude: lat, longitude: lon };
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
 
   if (loading) {
     return <Spinner />;
@@ -147,7 +175,28 @@ const ListingPage = () => {
             <Contact userRef={auth.currentUser.uid} listing={listing} />
           )}
         </div>
-        <div className="bg-purple-400 h-[250px] w-full"></div>
+        <div className=" h-[250px] w-full">
+          {!(coordinates?.length === 0) ? (
+            <MapContainer
+              center={coordinates}
+              zoom={5}
+              scrollWheelZoom={false}
+              style={{ height: "100%", width: "100%" }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <Marker position={coordinates}>
+                <Popup>
+                  A pretty CSS3 popup. <br /> Easily customizable.
+                </Popup>
+              </Marker>
+            </MapContainer>
+          ) : (
+            <div>Coordinates unavailable </div>
+          )}
+        </div>
       </div>
     </main>
   );
